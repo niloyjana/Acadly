@@ -1,0 +1,446 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
+import { GlassCard, Button, Badge } from "@/components/ui/glass-card";
+import { format } from "date-fns";
+import InteractiveCalendar from "@/components/ui/visualize-booking";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
+
+type Tab = "members" | "tasks" | "calendar";
+
+export default function SpaceDetailPage() {
+  const { spaceId } = useParams<{ spaceId: string }>();
+  const [tab, setTab] = useState<Tab>("tasks");
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div className="flex gap-2">
+        {(["tasks", "calendar", "members"] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`focus-ring rounded-full px-4 py-1.5 text-sm font-medium capitalize transition-colors ${
+              tab === t ? "bg-acadly-violet text-white" : "glass hover:bg-white/80 dark:hover:bg-white/10"
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === "tasks" && <TasksTab spaceId={spaceId} />}
+      {tab === "calendar" && <CalendarTab spaceId={spaceId} />}
+      {tab === "members" && <MembersTab spaceId={spaceId} />}
+    </div>
+  );
+}
+
+// ---------------- Tasks ----------------
+
+function TasksTab({ spaceId }: { spaceId: string }) {
+  const [tasks, setTasks] = useState<any[] | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ title: "", deadline: "", points: 10, assignedToId: "" });
+  const [members, setMembers] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Submission state
+  const [submittingTaskId, setSubmittingTaskId] = useState<string | null>(null);
+  const [submitFile, setSubmitFile] = useState<File | null>(null);
+  const [submitNote, setSubmitNote] = useState("");
+  const [submitLoading, setSubmitLoading] = useState(false);
+
+  // Review state
+  const [reviewingTaskId, setReviewingTaskId] = useState<string | null>(null);
+  const [reviewDecision, setReviewDecision] = useState<"APPROVE" | "REVISION_REQUESTED" | "REJECT">("APPROVE");
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [currentUser, setCurrentUser] = useState<{ id: string, role: string } | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [pendingReviews, setPendingReviews] = useState<any[]>([]);
+
+  const load = useCallback(() => {
+    fetch(`/api/spaces/${spaceId}/tasks`).then((r) => r.json()).then((d) => {
+      setTasks(d.tasks ?? []);
+      setCurrentUser({ id: d.currentUserId, role: d.currentUserRole });
+      if (d.currentUserRole && ["OWNER", "CORE_ORGANIZER", "TEAM_LEAD"].includes(d.currentUserRole)) {
+        fetch(`/api/spaces/${spaceId}/submissions/pending`).then((r) => r.json()).then((pd) => setPendingReviews(pd.pendingSubmissions ?? []));
+      }
+    });
+  }, [spaceId]);
+
+  useEffect(() => {
+    load();
+    fetch(`/api/spaces/${spaceId}/members`).then((r) => r.json()).then((d) => setMembers(d.active ?? []));
+  }, [spaceId, load]);
+
+  async function createTask(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const res = await fetch(`/api/spaces/${spaceId}/tasks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, deadline: new Date(form.deadline).toISOString(), assignedToId: form.assignedToId || undefined }),
+    });
+    const data = await res.json();
+    if (!res.ok) return setError(data.error);
+    setShowForm(false);
+    setForm({ title: "", deadline: "", points: 10, assignedToId: "" });
+    load();
+  }
+
+  async function reviewTask(submissionId: string) {
+    setReviewLoading(true);
+    try {
+      const decision = reviewDecision === "REVISION_REQUESTED" ? "REQUEST_REVISION" : reviewDecision;
+      const res = await fetch(`/api/submissions/${submissionId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          decision,
+          rating: reviewRating,
+          comment: reviewComment,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Review failed");
+      }
+      setReviewingTaskId(null);
+      setReviewComment("");
+      setReviewRating(5);
+      load();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setReviewLoading(false);
+    }
+  }
+
+  async function submitTask(taskId: string) {
+    setSubmitLoading(true);
+    try {
+      let fileId = undefined;
+      if (submitFile) {
+        const formData = new FormData();
+        formData.append("file", submitFile);
+        formData.append("spaceId", spaceId);
+        
+        const uploadRes = await fetch(`/api/files`, {
+          method: "POST",
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || "Upload failed");
+        fileId = uploadData.fileId;
+      }
+
+      const res = await fetch(`/api/tasks/${taskId}/submit`, { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ note: submitNote, fileId }) 
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Submission failed");
+      }
+      
+      setSubmittingTaskId(null);
+      setSubmitFile(null);
+      setSubmitNote("");
+      load();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSubmitLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancel" : "New Task"}</Button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={createTask} className="glass p-5 space-y-3">
+          <input required placeholder="Task title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+            className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm" />
+          <div className="grid grid-cols-2 gap-3">
+            <DateTimePicker value={form.deadline} onChange={(val) => setForm({ ...form, deadline: val })} placeholder="Deadline" />
+            <input type="number" min={0} value={form.points} onChange={(e) => setForm({ ...form, points: Number(e.target.value) })}
+              className="focus-ring rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm" />
+          </div>
+          <select value={form.assignedToId} onChange={(e) => setForm({ ...form, assignedToId: e.target.value })}
+            className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm">
+            <option value="">Unassigned</option>
+            {members.map((m) => <option key={m.id} value={m.user.id}>{m.user.name}</option>)}
+          </select>
+          {error && <p className="text-sm text-acadly-coral">{error}</p>}
+          <Button type="submit">Create</Button>
+        </form>
+      )}
+
+      {pendingReviews.length > 0 && (
+        <div className="space-y-3 mb-8">
+          <h3 className="font-medium text-lg text-acadly-violet">📥 Needs Review</h3>
+          {pendingReviews.map((sub) => (
+            <GlassCard key={sub.id} className="border border-acadly-violet/20 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{sub.task.title}</p>
+                  <p className="text-xs text-ink/50 dark:text-white/50">
+                    Submitted by {sub.user.name} · {format(new Date(sub.submittedAt), "d MMM, h:mm a")}
+                  </p>
+                </div>
+                <Button variant="ghost" onClick={() => setReviewingTaskId(reviewingTaskId === sub.taskId ? null : sub.taskId)}>
+                  {reviewingTaskId === sub.taskId ? "Cancel" : "Review"}
+                </Button>
+              </div>
+
+              {reviewingTaskId === sub.taskId && (
+                <div className="p-4 bg-white/40 dark:bg-black/20 rounded-xl space-y-3 border border-ink/5 dark:border-white/5">
+                  <p className="text-sm font-medium">Review Submission</p>
+                  {sub.file && (
+                    <p className="text-sm text-acadly-violet">
+                      <a href={`/api/files/${sub.file.id}`} target="_blank" rel="noreferrer">
+                        View attached file: {sub.file.filename}
+                      </a>
+                    </p>
+                  )}
+                  {sub.note && (
+                    <p className="text-sm text-ink/70 dark:text-white/70 italic">&quot;{sub.note}&quot;</p>
+                  )}
+                  
+                  <div className="flex gap-4 items-center mt-4">
+                    <div className="flex-1">
+                      <label className="text-xs font-medium text-ink/60 dark:text-white/60 mb-1 block">Decision</label>
+                      <select 
+                        value={reviewDecision} 
+                        onChange={(e: any) => setReviewDecision(e.target.value)}
+                        className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm"
+                      >
+                        <option value="APPROVE">Approve</option>
+                        <option value="REVISION_REQUESTED">Request Revision</option>
+                        <option value="REJECT">Reject</option>
+                      </select>
+                    </div>
+
+                    <div className="w-24">
+                      <label className="text-xs font-medium text-ink/60 dark:text-white/60 mb-1 block">Rating (1-5)</label>
+                      <input 
+                        type="number" min={1} max={5}
+                        value={reviewRating}
+                        onChange={(e) => setReviewRating(Number(e.target.value))}
+                        className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <textarea 
+                    placeholder="Leave a comment..." 
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm min-h-[80px]"
+                  />
+
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="ghost" onClick={() => setReviewingTaskId(null)} disabled={reviewLoading}>Cancel</Button>
+                    <Button onClick={() => reviewTask(sub.id)} disabled={reviewLoading}>
+                      {reviewLoading ? "Submitting..." : "Submit Review"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </GlassCard>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {tasks?.map((t) => (
+          <GlassCard key={t.id} className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">{t.title}</p>
+                <p className="text-xs text-ink/50 dark:text-white/50">
+                  {t.assignedTo?.name ?? "Unassigned"} · Due {format(new Date(t.deadline), "d MMM, h:mm a")} · {t.points} pts
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge tone={t.status === "COMPLETED" ? "mint" : t.status === "MISSED" ? "coral" : "amber"}>
+                  {t.status.replace("_", " ").toLowerCase()}
+                </Badge>
+                {["ASSIGNED", "IN_PROGRESS", "REVISION_REQUIRED"].includes(t.status) && submittingTaskId !== t.id && t.assignedTo?.id === currentUser?.id && (
+                  <Button variant="ghost" onClick={() => setSubmittingTaskId(t.id)}>Submit work</Button>
+                )}
+              </div>
+            </div>
+            
+            {submittingTaskId === t.id && (
+              <div className="mt-2 pt-4 border-t border-black/5 dark:border-white/5 flex flex-col gap-3">
+                <textarea 
+                  placeholder="Add a note (optional)..." 
+                  value={submitNote}
+                  onChange={(e) => setSubmitNote(e.target.value)}
+                  className="w-full bg-transparent border-0 px-0 py-1 text-sm text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus:ring-0 resize-none min-h-[40px] outline-none"
+                />
+                
+                <div className="flex items-center justify-between border-t border-black/5 dark:border-white/5 pt-3">
+                  <input 
+                    type="file" 
+                    onChange={(e) => setSubmitFile(e.target.files?.[0] || null)}
+                    className="text-xs text-black/50 dark:text-white/50 file:mr-3 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-medium file:bg-black/5 dark:file:bg-white/10 file:text-black dark:file:text-white hover:file:bg-black/10 dark:hover:file:bg-white/20 cursor-pointer"
+                  />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button 
+                      onClick={() => { setSubmittingTaskId(null); setSubmitFile(null); setSubmitNote(""); }} 
+                      disabled={submitLoading} 
+                      className="text-xs font-medium text-black/40 hover:text-black dark:text-white/40 dark:hover:text-white transition-colors px-3 py-1.5"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={() => submitTask(t.id)} 
+                      disabled={submitLoading} 
+                      className="text-xs font-medium bg-black dark:bg-white text-white dark:text-black px-4 py-1.5 rounded-full hover:scale-105 active:scale-95 transition-all"
+                    >
+                      {submitLoading ? "..." : "Submit"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </GlassCard>
+        ))}
+        {tasks?.length === 0 && <p className="text-sm text-ink/50 dark:text-white/50 text-center py-6">No tasks yet.</p>}
+      </div>
+    </div>
+  );
+}
+
+// ---------------- Calendar ----------------
+
+function CalendarTab({ spaceId }: { spaceId: string }) {
+  const [events, setEvents] = useState<any[] | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ title: "", startTime: "", endTime: "", location: "" });
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    fetch(`/api/spaces/${spaceId}/events`).then((r) => r.json()).then((d) => setEvents(d.events ?? []));
+  }, [spaceId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function createEvent(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const res = await fetch(`/api/spaces/${spaceId}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, startTime: new Date(form.startTime).toISOString(), endTime: new Date(form.endTime).toISOString() }),
+    });
+    const data = await res.json();
+    if (!res.ok) return setError(data.error);
+    setShowForm(false);
+    setForm({ title: "", startTime: "", endTime: "", location: "" });
+    load();
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancel" : "New Event"}</Button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={createEvent} className="glass p-5 space-y-3 relative z-20">
+          <input required placeholder="Event title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+            className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm" />
+          <div className="grid grid-cols-2 gap-3">
+            <DateTimePicker value={form.startTime} onChange={(val) => setForm({ ...form, startTime: val })} placeholder="Start time" />
+            <DateTimePicker value={form.endTime} onChange={(val) => setForm({ ...form, endTime: val })} placeholder="End time" />
+          </div>
+          <input placeholder="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
+            className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm" />
+          {error && <p className="text-sm text-acadly-coral">{error}</p>}
+          <Button type="submit">Create</Button>
+        </form>
+      )}
+
+      <div className="space-y-3">
+        <InteractiveCalendar events={events || []} spaceId={spaceId} onDelete={load} />
+      </div>
+    </div>
+  );
+}
+
+// ---------------- Members ----------------
+
+function MembersTab({ spaceId }: { spaceId: string }) {
+  const [active, setActive] = useState<any[]>([]);
+  const [pending, setPending] = useState<any[]>([]);
+  const [inviteCode, setInviteCode] = useState<any>(null);
+
+  const load = useCallback(() => {
+    fetch(`/api/spaces/${spaceId}/members`).then((r) => r.json()).then((d) => { setActive(d.active ?? []); setPending(d.pending ?? []); });
+    fetch(`/api/spaces/${spaceId}/invite-code`).then((r) => (r.ok ? r.json() : null)).then((d) => d && setInviteCode(d.inviteCode));
+  }, [spaceId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function act(membershipId: string, action: "APPROVE" | "REJECT") {
+    await fetch(`/api/spaces/${spaceId}/members/${membershipId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }),
+    });
+    load();
+  }
+
+  async function regenerateCode() {
+    const res = await fetch(`/api/spaces/${spaceId}/invite-code`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    if (res.ok) load();
+  }
+
+  return (
+    <div className="space-y-6">
+      <GlassCard className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-ink/60 dark:text-white/60">Invite code</p>
+          <p className="font-display text-xl tracking-widest">{inviteCode?.code ?? "—"}</p>
+        </div>
+        <Button variant="ghost" onClick={regenerateCode}>Regenerate</Button>
+      </GlassCard>
+
+      {pending.length > 0 && (
+        <div>
+          <p className="text-sm font-medium mb-2">Pending requests</p>
+          <div className="space-y-2">
+            {pending.map((m) => (
+              <GlassCard key={m.id} className="flex items-center justify-between">
+                <p className="font-medium text-sm">{m.user.name}</p>
+                <div className="flex gap-2">
+                  <Button onClick={() => act(m.id, "APPROVE")}>Approve</Button>
+                  <Button variant="danger" onClick={() => act(m.id, "REJECT")}>Reject</Button>
+                </div>
+              </GlassCard>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <p className="text-sm font-medium mb-2">Members</p>
+        <div className="space-y-2">
+          {active.map((m) => (
+            <GlassCard key={m.id} className="flex items-center justify-between">
+              <p className="font-medium text-sm">{m.user.name}</p>
+              <Badge>{m.role.replace("_", " ").toLowerCase()}</Badge>
+            </GlassCard>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,312 @@
+// Acadly — core database schema
+// Maps directly to PRD section 41 (Core Database Entities), extended with
+// fields needed to actually enforce the rules in sections 8–22.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")   // pooled connection, used at runtime
+  directUrl = env("DIRECT_URL")     // direct connection, used for migrations
+}
+
+// ---------- Enums ----------
+
+enum GroupRole {
+  OWNER
+  CORE_ORGANIZER
+  TEAM_LEAD
+  MEMBER
+  VIEWER
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  REMOVED
+}
+
+enum SpaceVisibility {
+  PRIVATE
+  INVITE_ONLY
+}
+
+enum InviteCodeStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum TaskStatus {
+  ASSIGNED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REVISION_REQUIRED
+  COMPLETED
+  OVERDUE
+  MISSED
+}
+
+enum SubmissionStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  REVISION_REQUESTED
+}
+
+enum NotificationType {
+  EVENT_REMINDER
+  TASK_ASSIGNED
+  TASK_DEADLINE
+  TASK_OVERDUE
+  SUBMISSION_REVIEWED
+  NEW_ANNOUNCEMENT
+  ACCESS_REQUEST
+  ACCESS_APPROVED
+  ACCESS_REJECTED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  RETRYING
+}
+
+// ---------- Core entities ----------
+
+model User {
+  id               String   @id @default(cuid())
+  name             String
+  email            String   @unique
+  passwordHash     String
+  whatsappNumber   String?
+  avatarUrl        String?
+  status           String   @default("ACTIVE") // ACTIVE | SUSPENDED
+  emailVerifiedAt  DateTime?
+  createdAt        DateTime @default(now())
+
+  memberships      SpaceMember[]
+  ownedSpaces      Space[]        @relation("SpaceOwner")
+  createdInvites   InviteCode[]
+  createdEvents    Event[]        @relation("EventCreator")
+  tasksAssigned    Task[]         @relation("TaskAssignee")
+  tasksCreated     Task[]         @relation("TaskCreator")
+  submissions      Submission[]   @relation("SubmissionAuthor")
+  reviewedSubs     Submission[]   @relation("SubmissionReviewer")
+  files            FileAsset[]
+  notifications    Notification[]
+  notifPreferences NotificationPreference[]
+  auditLogs        AuditLog[]
+  announcements    Announcement[]
+}
+
+model Space {
+  id           String          @id @default(cuid())
+  name         String
+  description  String?
+  category     String?
+  ownerId      String
+  owner        User            @relation("SpaceOwner", fields: [ownerId], references: [id])
+  startDate    DateTime?
+  endDate      DateTime?
+  visibility   SpaceVisibility @default(INVITE_ONLY)
+  approvalRequired Boolean     @default(true)
+  status       String          @default("ACTIVE") // ACTIVE | ARCHIVED
+  createdAt    DateTime        @default(now())
+
+  members      SpaceMember[]
+  inviteCodes  InviteCode[]
+  events       Event[]
+  tasks        Task[]
+  files        FileAsset[]
+  announcements Announcement[]
+  auditLogs    AuditLog[]
+}
+
+model SpaceMember {
+  id        String            @id @default(cuid())
+  spaceId   String
+  space     Space             @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      GroupRole         @default(MEMBER)
+  status    MembershipStatus  @default(PENDING)
+  joinedAt  DateTime?
+  requestedAt DateTime        @default(now())
+
+  // accountability, denormalized for fast dashboard reads, recalculated server-side
+  points          Int @default(0)
+  completedCount  Int @default(0)
+  lateCount       Int @default(0)
+  missedCount     Int @default(0)
+
+  @@unique([spaceId, userId])
+  @@index([spaceId, status])
+}
+
+model InviteCode {
+  id         String           @id @default(cuid())
+  spaceId    String
+  space      Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  code       String           @unique // human-shown code, e.g. ACD-7FQ9-K2M
+  codeHash   String           // sha256 of code, used for lookup w/o leaking plaintext in logs
+  status     InviteCodeStatus @default(ACTIVE)
+  expiresAt  DateTime?
+  maxUses    Int?
+  usageCount Int              @default(0)
+  createdById String
+  createdBy  User             @relation(fields: [createdById], references: [id])
+  createdAt  DateTime         @default(now())
+
+  @@index([codeHash])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  spaceId     String
+  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  category    String   @default("MEETING") // MEETING | EVENT | DEADLINE | REHEARSAL | ANNOUNCEMENT
+  startTime   DateTime
+  endTime     DateTime
+  location    String?
+  createdById String
+  createdBy   User     @relation("EventCreator", fields: [createdById], references: [id])
+  reminderOffsetsMins Int[] @default([10080, 1440]) // 7 days, 1 day (in minutes)
+  createdAt   DateTime @default(now())
+
+  @@index([spaceId, startTime])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  spaceId     String
+  space       Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  assignedToId String?
+  assignedTo  User?      @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  createdById String
+  createdBy   User       @relation("TaskCreator", fields: [createdById], references: [id])
+  deadline    DateTime
+  points      Int        @default(10)
+  latePoints  Int        @default(0)
+  missedPoints Int       @default(-5)
+  status      TaskStatus @default(ASSIGNED)
+  createdAt   DateTime   @default(now())
+
+  submissions Submission[]
+
+  @@index([spaceId, status])
+  @@index([assignedToId])
+}
+
+model Submission {
+  id             String            @id @default(cuid())
+  taskId         String
+  task           Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User              @relation("SubmissionAuthor", fields: [userId], references: [id])
+  fileId         String?
+  file           FileAsset?        @relation(fields: [fileId], references: [id])
+  note           String?
+  version        Int               @default(1)
+  status         SubmissionStatus  @default(PENDING_REVIEW)
+  wasOnTime      Boolean           @default(true)
+  rating         Int?              // 1-5
+  reviewerId     String?
+  reviewer       User?             @relation("SubmissionReviewer", fields: [reviewerId], references: [id])
+  reviewerComment String?
+  submittedAt    DateTime          @default(now())
+  reviewedAt     DateTime?
+
+  @@index([taskId])
+}
+
+model FileAsset {
+  id          String   @id @default(cuid())
+  uploaderId  String
+  uploader    User     @relation(fields: [uploaderId], references: [id])
+  spaceId     String
+  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  filename    String
+  storageKey  String   // path inside Supabase Storage bucket
+  fileType    String
+  size        Int
+  createdAt   DateTime @default(now())
+
+  submissions Submission[]
+
+  @@index([spaceId])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([spaceId])
+}
+
+model Notification {
+  id           String              @id @default(cuid())
+  userId       String
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         NotificationType
+  title        String
+  message      String
+  channel      NotificationChannel @default(IN_APP)
+  relatedSpaceId String?
+  relatedId    String?             // eventId / taskId / submissionId depending on type
+  scheduledAt  DateTime            @default(now())
+  sentAt       DateTime?
+  readAt       DateTime?
+  status       NotificationStatus  @default(PENDING)
+
+  @@index([userId, status])
+}
+
+model NotificationPreference {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       NotificationType
+  inApp      Boolean  @default(true)
+  email      Boolean  @default(false)
+  whatsapp   Boolean  @default(false)
+
+  @@unique([userId, type])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  spaceId   String?
+  space     Space?   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  action    String   // e.g. "APPROVED_MEMBER", "REGENERATED_INVITE_CODE"
+  targetType String? // e.g. "SpaceMember", "InviteCode"
+  targetId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([spaceId, createdAt])
+}
