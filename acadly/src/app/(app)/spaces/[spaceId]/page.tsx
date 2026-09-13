@@ -16,7 +16,7 @@ export default function SpaceDetailPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {(["tasks", "calendar", "members", "announcements"] as Tab[]).map((t) => (
           <button
             key={t}

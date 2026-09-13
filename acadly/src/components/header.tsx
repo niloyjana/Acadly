@@ -1,11 +1,20 @@
 "use client";
 
 import { signOut, useSession } from "next-auth/react";
-import { Search, Bell, LogOut, Moon, Sun } from "lucide-react";
+import { Search, Bell, LogOut, Moon, Sun, Menu, X, LayoutGrid, Users, PlusCircle, Calendar } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { flushSync } from "react-dom";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const NAV = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
+  { href: "/calendar", label: "My Calendar", icon: Calendar },
+  { href: "/spaces", label: "My Spaces", icon: Users },
+  { href: "/create-space", label: "New Space", icon: PlusCircle },
+];
 
 const placeholders = ["spaces...", "tasks...", "files...", "notes..."];
 
@@ -59,6 +68,8 @@ export function Header() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);
@@ -136,14 +147,62 @@ export function Header() {
         }} 
       />
 
-      <motion.div
-        initial={false}
-        animate={{ x: isSidebarCollapsed ? 192 : 0 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="flex-1 max-w-sm flex"
-      >
-        <SearchBar />
-      </motion.div>
+      <div className="flex gap-2 w-full max-w-sm">
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="md:hidden flex items-center justify-center p-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10"
+        >
+          <Menu size={20} />
+        </button>
+
+        <motion.div
+          initial={false}
+          animate={{ x: isSidebarCollapsed ? 192 : 0 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="flex-1 flex"
+        >
+          <SearchBar />
+        </motion.div>
+      </div>
+
+      {/* Mobile Menu Drawer */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-white dark:bg-[#0E0B1A] p-6 flex flex-col md:hidden"
+          >
+            <div className="flex justify-between items-center mb-8">
+              <span className="font-display text-2xl font-semibold tracking-tight">Acadly</span>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 bg-black/5 dark:bg-white/10 rounded-full"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {NAV.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-medium transition-colors ${
+                    pathname === item.href || pathname?.startsWith(item.href + "/")
+                      ? "bg-acadly-violet/10 text-acadly-violet"
+                      : "hover:bg-black/5 dark:hover:bg-white/5"
+                  }`}
+                >
+                  <item.icon size={24} />
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       <div className="flex items-center h-full">
         {name && (
