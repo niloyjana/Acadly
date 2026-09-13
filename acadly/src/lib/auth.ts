@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Credentials-based auth, JWT session strategy. No adapter is used because
 // Prisma's NextAuth adapter is built for OAuth account linking, not
@@ -18,12 +19,22 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email.toLowerCase().trim() },
-        });
+        const email = credentials.email.toLowerCase().trim();
+        const forwarded = req?.headers?.["x-forwarded-for"];
+        const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim() ?? "unknown";
+
+        // Rate limit by email+IP so a spray attack against many accounts
+        // from one IP is throttled, without one bad actor's IP blocking
+        // every future login attempt for a real user's email.
+        const { success } = await checkRateLimit(`login:${email}:${ip}`);
+        if (!success) {
+          throw new Error("Too many attempts. Please try again in a minute.");
+        }
+
+        const user = await prisma.user.findUnique({ where: { email } });
         if (!user || user.status !== "ACTIVE") return null;
 
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);

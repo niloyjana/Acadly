@@ -3,11 +3,18 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUserId, withApiErrors } from "@/lib/api-helpers";
 import { hashCode, normalizeCode } from "@/lib/invite-code";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const JoinSchema = z.object({ code: z.string().min(6).max(20) });
 
 export async function POST(req: Request) {
   return withApiErrors(async () => {
+    const ip = getClientIp(req);
+    const { success } = await checkRateLimit(`join:${ip}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many attempts. Please try again in a minute." }, { status: 429 });
+    }
+
     const userId = await requireUserId();
     const { code } = JoinSchema.parse(await req.json());
     const codeHash = hashCode(normalizeCode(code));

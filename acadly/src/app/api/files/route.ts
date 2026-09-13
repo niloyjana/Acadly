@@ -5,10 +5,22 @@ import { requireMembership } from "@/lib/permissions";
 import { createClient } from "@supabase/supabase-js";
 import { nanoid } from "nanoid";
 
+// Fail loudly at import time if these aren't configured — a silent
+// "placeholder" fallback would let uploads appear to work while quietly
+// hitting a fake host, which is far harder to debug than a startup crash.
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set.");
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set.");
+}
+
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder"
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
 export async function POST(req: Request) {
   return withApiErrors(async () => {
@@ -19,6 +31,10 @@ export async function POST(req: Request) {
 
     if (!file || !spaceId) {
       return NextResponse.json({ error: "File and spaceId are required" }, { status: 400 });
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: "File must be smaller than 20 MB." }, { status: 413 });
     }
 
     await requireMembership(spaceId, userId);
