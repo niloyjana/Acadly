@@ -32,7 +32,7 @@ export default function SpacesPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link href="/join"><Button variant="ghost">Join</Button></Link>
-          <Link href="/create-space"><Button>New Space</Button></Link>
+          <Link href="/create-space"><Button>Create</Button></Link>
         </div>
       </div>
 
