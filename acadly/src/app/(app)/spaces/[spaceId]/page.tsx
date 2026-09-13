@@ -7,8 +7,9 @@ import { format } from "date-fns";
 import InteractiveCalendar from "@/components/ui/visualize-booking";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Star } from "lucide-react";
+import { SpaceTabNav, type SpaceTab } from "@/components/space-tab-nav";
 
-type Tab = "tasks" | "calendar" | "members" | "announcements";
+type Tab = SpaceTab;
 
 export default function SpaceDetailPage() {
   const { spaceId } = useParams<{ spaceId: string }>();
@@ -16,18 +17,8 @@ export default function SpaceDetailPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {(["tasks", "calendar", "members", "announcements"] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`focus-ring rounded-full px-4 py-1.5 text-sm font-medium capitalize transition-colors ${
-              tab === t ? "bg-acadly-violet text-white" : "glass hover:bg-white/80 dark:hover:bg-white/10"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+      <div className="glass rounded-xl2 px-2 pb-1 pt-1">
+        <SpaceTabNav active={tab} onChange={setTab} />
       </div>
 
       {tab === "tasks" && <TasksTab spaceId={spaceId} />}

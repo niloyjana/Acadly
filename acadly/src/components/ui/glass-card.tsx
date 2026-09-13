@@ -25,13 +25,27 @@ export function Button({
 }
 
 export function Badge({ tone = "violet", children }: { tone?: "violet" | "amber" | "mint" | "coral"; children: React.ReactNode }) {
-  const tones: Record<string, string> = {
-    violet: "bg-acadly-violet/15 text-acadly-violet dark:text-[#c3bbff]",
-    amber: "bg-acadly-amber/15 text-[#946313] dark:text-acadly-amber",
-    mint: "bg-acadly-mint/15 text-[#1d7d5c] dark:text-acadly-mint",
-    coral: "bg-acadly-coral/15 text-[#c23f3f] dark:text-acadly-coral",
+  const dot: Record<string, string> = {
+    violet: "bg-acadly-violet",
+    amber: "bg-acadly-amber",
+    mint: "bg-acadly-mint",
+    coral: "bg-acadly-coral",
+  };
+  const text: Record<string, string> = {
+    violet: "text-ink/80 dark:text-white/80",
+    amber: "text-ink/80 dark:text-white/80",
+    mint: "text-ink/80 dark:text-white/80",
+    coral: "text-ink/80 dark:text-white/80",
   };
   return (
-    <span className={clsx("rounded-full px-2.5 py-1 text-xs font-medium", tones[tone])}>{children}</span>
+    <span
+      className={clsx(
+        "inline-flex items-center gap-1.5 rounded-md border border-black/10 bg-white/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide backdrop-blur-sm dark:border-white/10 dark:bg-white/5",
+        text[tone]
+      )}
+    >
+      <span className={clsx("h-1.5 w-1.5 shrink-0 rounded-full", dot[tone])} />
+      {children}
+    </span>
   );
 }
