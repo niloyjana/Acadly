@@ -2,11 +2,22 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "@/lib/permissions";
+import { prisma } from "@/lib/prisma";
 
 /** Reads the signed-in user's id from the JWT session, or throws 401. */
 export async function requireUserId(): Promise<string> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new UnauthorizedError("Sign in required.");
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { status: true },
+  });
+
+  if (!user || user.status === "SUSPENDED") {
+    throw new UnauthorizedError("Account suspended.");
+  }
+
   return session.user.id;
 }
 

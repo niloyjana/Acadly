@@ -48,7 +48,13 @@ export async function POST(req: Request) {
     const autoApprove = !invite.space.approvalRequired;
 
     const membership = await prisma.$transaction(async (tx) => {
-      await tx.inviteCode.update({ where: { id: invite.id }, data: { usageCount: { increment: 1 } } });
+      const res = await tx.inviteCode.updateMany({
+        where: { id: invite.id, ...(invite.maxUses !== null && { usageCount: { lt: invite.maxUses } }) },
+        data: { usageCount: { increment: 1 } }
+      });
+      if (res.count === 0) {
+        throw new Error("This invite code has reached its usage limit.");
+      }
 
       const data = {
         role: "MEMBER" as const,

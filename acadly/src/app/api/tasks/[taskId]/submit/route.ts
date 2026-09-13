@@ -23,8 +23,8 @@ export async function POST(req: Request, { params }: { params: { taskId: string 
     if (!task.assignees.some((a) => a.id === userId)) {
       throw new ForbiddenError("You are not assigned to this task.");
     }
-    if (task.status === "COMPLETED") {
-      return NextResponse.json({ error: "This task has already been completed and approved." }, { status: 409 });
+    if (["COMPLETED", "SUBMITTED"].includes(task.status)) {
+      return NextResponse.json({ error: "You already have a pending submission." }, { status: 409 });
     }
 
     const body = SubmitSchema.parse(await req.json());

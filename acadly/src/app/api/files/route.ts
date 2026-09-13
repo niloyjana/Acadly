@@ -28,10 +28,15 @@ export async function POST(req: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // Security: Verify magic numbers instead of trusting client MIME type (PRD §19)
+    const { fileTypeFromBuffer } = await import("file-type");
+    const typeInfo = await fileTypeFromBuffer(buffer);
+    const safeMimeType = typeInfo?.mime || "application/octet-stream";
+
     const { error: uploadError } = await supabase.storage
       .from("acadly-submissions")
       .upload(storageKey, buffer, {
-        contentType: file.type,
+        contentType: safeMimeType,
       });
 
     if (uploadError) {
@@ -45,7 +50,7 @@ export async function POST(req: Request) {
         spaceId: spaceId,
         filename: file.name,
         storageKey,
-        fileType: file.type,
+        fileType: safeMimeType,
         size: file.size,
       },
     });
