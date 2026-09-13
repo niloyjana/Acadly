@@ -16,47 +16,17 @@ const NAV = [
   { href: "/create-space", label: "New Space", icon: PlusCircle },
 ];
 
-const placeholders = ["spaces...", "tasks...", "files...", "notes..."];
-
 function SearchBar() {
-  const [index, setIndex] = useState(0);
   const [value, setValue] = useState("");
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIndex((prev) => (prev + 1) % placeholders.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <div className="relative flex items-center gap-2 text-ink/50 dark:text-white/50 flex-1 w-full px-4 py-2 rounded-full border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 focus-within:ring-2 focus-within:ring-acadly-violet/50 transition-all overflow-hidden h-10">
-      <Search size={16} />
-      
-      {!value && (
-        <div className="absolute left-[38px] right-4 pointer-events-none flex items-center h-full text-sm text-ink/40 dark:text-white/40">
-          <span className="whitespace-nowrap">Search&nbsp;</span>
-          <div className="relative flex-1 h-full">
-            <AnimatePresence>
-              <motion.span
-                key={index}
-                initial={{ y: 15, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -15, opacity: 0 }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-                className="absolute inset-y-0 left-0 flex items-center whitespace-nowrap"
-              >
-                {placeholders[index]}
-              </motion.span>
-            </AnimatePresence>
-          </div>
-        </div>
-      )}
-
+    <div className="relative flex items-center gap-3 text-ink/50 dark:text-white/50 flex-1 w-full px-5 py-2.5 rounded-[1.25rem] border border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5 focus-within:ring-2 focus-within:ring-acadly-violet/50 transition-all h-11">
+      <Search size={18} />
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="bg-transparent outline-none text-sm w-full text-ink dark:text-white relative z-10"
+        placeholder="search"
+        className="bg-transparent outline-none text-base w-full text-ink dark:text-white placeholder:text-ink/40 dark:placeholder:text-white/40"
       />
     </div>
   );
@@ -217,14 +187,14 @@ export function Header() {
           </div>
         )}
         
-        <div className="flex items-center gap-1 md:gap-3">
+        <div className="flex items-center gap-4">
           <motion.button 
             whileHover={{ scale: 1.15 }}
             whileTap={{ scale: 0.9 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-ink/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            className="text-ink/80 dark:text-white/80 hover:text-ink dark:hover:text-white transition-colors"
           >
-            <Bell size={20} />
+            <Bell size={22} />
           </motion.button>
           
           <motion.button 
@@ -232,9 +202,9 @@ export function Header() {
             whileHover={{ scale: 1.15 }}
             whileTap={{ scale: 0.9 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-ink/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            className="text-ink/80 dark:text-white/80 hover:text-ink dark:hover:text-white transition-colors"
           >
-            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            {isDark ? <Sun size={22} /> : <Moon size={22} />}
           </motion.button>
           
           {name && (
@@ -243,9 +213,9 @@ export function Header() {
               whileHover={{ scale: 1.15 }}
               whileTap={{ scale: 0.9 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-ink/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              className="text-ink/80 dark:text-white/80 hover:text-ink dark:hover:text-white transition-colors"
             >
-              <LogOut size={20} />
+              <LogOut size={22} />
             </motion.button>
           )}
         </div>
