@@ -185,13 +185,35 @@ function TasksTab({ spaceId }: { spaceId: string }) {
             <input type="number" min={0} value={form.points} onChange={(e) => setForm({ ...form, points: e.target.value })} placeholder="Points"
               className="focus-ring rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
           </div>
-          <select multiple value={form.assigneeIds} onChange={(e) => {
-            const options = Array.from(e.target.selectedOptions);
-            setForm({ ...form, assigneeIds: options.map(o => o.value) });
-          }}
-            className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm h-24">
-            {members.map((m) => <option key={m.id} value={m.user.id} className="bg-white text-black dark:bg-neutral-900 dark:text-white p-1">{m.user.name}</option>)}
-          </select>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-ink/60 dark:text-white/60 ml-1">Assign to (optional):</span>
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-3 border border-ink/10 dark:border-white/15 rounded-xl bg-white/70 dark:bg-white/5">
+              {members.map((m) => {
+                const isSelected = form.assigneeIds.includes(m.user.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setForm({ ...form, assigneeIds: form.assigneeIds.filter(id => id !== m.user.id) });
+                      } else {
+                        setForm({ ...form, assigneeIds: [...form.assigneeIds, m.user.id] });
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                      isSelected 
+                        ? "bg-acadly-violet text-white shadow-sm" 
+                        : "bg-black/5 dark:bg-white/10 text-ink dark:text-white hover:bg-black/10 dark:hover:bg-white/20"
+                    }`}
+                  >
+                    {m.user.name}
+                  </button>
+                );
+              })}
+              {members.length === 0 && <span className="text-xs text-ink/50 dark:text-white/50">No members available</span>}
+            </div>
+          </div>
           {error && <p className="text-sm text-acadly-coral">{error}</p>}
           <Button type="submit">Create</Button>
         </form>

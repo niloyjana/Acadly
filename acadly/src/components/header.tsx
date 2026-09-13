@@ -64,7 +64,7 @@ function SearchBar() {
 
 export function Header() {
   const { data: session } = useSession();
-  const name = session?.user?.name?.split(" ")[0] ?? "";
+  const name = session?.user?.name ? session.user.name.split(" ")[0] : "";
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -147,19 +147,23 @@ export function Header() {
         }} 
       />
 
-      <div className="flex gap-2 w-full max-w-sm">
+      <div className="flex items-center gap-3 md:w-full md:max-w-sm">
         <button
           onClick={() => setIsMobileMenuOpen(true)}
-          className="md:hidden flex items-center justify-center p-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10"
+          className="md:hidden flex-none flex items-center justify-center w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10"
         >
           <Menu size={20} />
         </button>
+
+        <span className="md:hidden font-display text-xl font-semibold tracking-tight">
+          Acadly
+        </span>
 
         <motion.div
           initial={false}
           animate={{ x: isSidebarCollapsed ? 192 : 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="flex-1 flex"
+          className="hidden md:flex flex-1"
         >
           <SearchBar />
         </motion.div>
@@ -206,15 +210,15 @@ export function Header() {
       
       <div className="flex items-center h-full">
         {name && (
-          <div className="flex items-center gap-2 px-3 py-1.5 mr-2 text-sm font-medium">
+          <div className="flex items-center gap-2 px-1 md:px-3 py-1.5 mr-1 md:mr-2 text-sm font-medium">
              <span className="h-7 w-7 rounded-full bg-acadly-violet text-white text-xs flex items-center justify-center font-bold shadow-sm">
               {name[0]?.toUpperCase()}
             </span>
-            {name}
+            <span className="hidden md:inline">{name}</span>
           </div>
         )}
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 md:gap-3">
           <motion.button 
             whileHover={{ scale: 1.15 }}
             whileTap={{ scale: 0.9 }}
@@ -236,7 +240,7 @@ export function Header() {
           
           {name && (
             <motion.button 
-              onClick={() => signOut({ callbackUrl: "/" })}
+              onClick={() => signOut({ callbackUrl: window.location.origin })}
               whileHover={{ scale: 1.15 }}
               whileTap={{ scale: 0.9 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}

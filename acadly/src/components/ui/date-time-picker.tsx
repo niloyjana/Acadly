@@ -79,8 +79,15 @@ export function DateTimePicker({ value, onChange, placeholder }: DateTimePickerP
       </div>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 z-50 rounded-2xl border border-black/10 dark:border-white/10 bg-white/90 dark:bg-black/90 backdrop-blur-3xl p-4 shadow-2xl w-80">
-          <DateWheelPicker
+        <>
+          {/* Mobile backdrop */}
+          <div 
+            className="fixed inset-0 z-40 bg-black/5 dark:bg-black/20 md:hidden"
+            onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
+          />
+          
+          <div className="fixed inset-x-4 bottom-6 z-50 md:absolute md:top-full md:mt-2 md:left-0 md:bottom-auto md:inset-x-auto rounded-3xl border border-black/10 dark:border-white/10 bg-white/90 dark:bg-black/90 backdrop-blur-3xl p-6 md:p-4 shadow-2xl md:w-80 max-w-sm mx-auto">
+            <DateWheelPicker
             value={parsedDate}
             onChange={handleDateChange}
             size="sm"
@@ -108,7 +115,7 @@ export function DateTimePicker({ value, onChange, placeholder }: DateTimePickerP
               ))}
             </select>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

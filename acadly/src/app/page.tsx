@@ -12,6 +12,7 @@ export default function LandingPage() {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
   
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,6 +31,28 @@ export default function LandingPage() {
       setLoading(false);
     } else {
       window.location.href = "/dashboard";
+    }
+  };
+
+  const handleRegister = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Registration failed");
+      }
+      // Auto-login after registration
+      await signIn("credentials", { email, password, redirect: false });
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      setError(err.message);
+      setLoading(false);
     }
   };
 
@@ -266,6 +289,8 @@ export default function LandingPage() {
                       initial={{ opacity: 0, height: 0, y: -10 }}
                       animate={{ opacity: 1, height: "auto", y: 0 }}
                       exit={{ opacity: 0, height: 0, y: -10 }}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                       placeholder="Full name" 
                       className="w-full px-5 py-4 rounded-xl border border-black/10 dark:border-white/10 bg-white/50 dark:bg-black/50 text-black dark:text-white outline-none focus:border-acadly-violet transition-colors" 
                     />
@@ -298,11 +323,11 @@ export default function LandingPage() {
                 {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
                 <button 
-                  onClick={handleLogin}
+                  onClick={authMode === "login" ? handleLogin : handleRegister}
                   disabled={loading}
                   className="w-full mt-2 py-4 rounded-xl bg-acadly-violet text-white font-semibold shadow-md hover:bg-acadly-violet/90 transition-colors"
                 >
-                  {loading ? "Logging in..." : authMode === "login" ? "Log in" : "Create account"}
+                  {loading ? "Please wait..." : authMode === "login" ? "Log in" : "Create account"}
                 </button>
                 <div className="mt-4 flex items-center justify-between text-sm text-black/50 dark:text-white/50">
                   <button onClick={() => { setShowLogin(false); setTimeout(() => setAuthMode("login"), 500); }} className="hover:text-black dark:hover:text-white transition-colors">← Back</button>
