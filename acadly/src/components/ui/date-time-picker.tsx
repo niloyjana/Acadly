@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from "react";
 import { DateWheelPicker } from "./date-wheel-picker";
 import { format } from "date-fns";
@@ -115,6 +117,7 @@ export function DateTimePicker({ value, onChange, placeholder }: DateTimePickerP
               ))}
             </select>
           </div>
+        </div>
         </>
       )}
     </div>
