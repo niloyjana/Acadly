@@ -142,52 +142,54 @@ export function Header() {
       {/* Mobile Menu Drawer */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 md:hidden"
-            />
-            {/* Drawer sliding in from left */}
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed top-0 left-0 h-full w-72 z-50 bg-white dark:bg-[#0E0B1A] p-6 flex flex-col shadow-2xl md:hidden"
-            >
-              <div className="flex justify-between items-center mb-8">
-                <span className="font-display text-2xl font-semibold tracking-tight">Acadly</span>
-                <button
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 md:hidden"
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            key="drawer"
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="fixed top-0 left-0 h-full w-72 z-[60] bg-white dark:bg-[#0E0B1A] p-6 flex flex-col shadow-2xl md:hidden"
+          >
+            <div className="flex justify-between items-center mb-8">
+              <span className="font-display text-2xl font-semibold tracking-tight">Acadly</span>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 bg-black/5 dark:bg-white/10 rounded-full"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {NAV.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 bg-black/5 dark:bg-white/10 rounded-full"
+                  className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-medium transition-colors ${
+                    pathname === item.href || pathname?.startsWith(item.href + "/")
+                      ? "bg-acadly-violet/10 text-acadly-violet"
+                      : "hover:bg-black/5 dark:hover:bg-white/5"
+                  }`}
                 >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="flex flex-col gap-2">
-                {NAV.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-medium transition-colors ${
-                      pathname === item.href || pathname?.startsWith(item.href + "/")
-                        ? "bg-acadly-violet/10 text-acadly-violet"
-                        : "hover:bg-black/5 dark:hover:bg-white/5"
-                    }`}
-                  >
-                    <item.icon size={24} />
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            </motion.div>
-          </>
+                  <item.icon size={24} />
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
       
