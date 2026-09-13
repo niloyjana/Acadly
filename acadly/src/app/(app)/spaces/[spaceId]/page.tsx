@@ -435,8 +435,14 @@ function MembersTab({ spaceId }: { spaceId: string }) {
   const [pending, setPending] = useState<any[]>([]);
   const [inviteCode, setInviteCode] = useState<any>(null);
 
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+
   const load = useCallback(() => {
-    fetch(`/api/spaces/${spaceId}/members`).then((r) => r.json()).then((d) => { setActive(d.active ?? []); setPending(d.pending ?? []); });
+    fetch(`/api/spaces/${spaceId}/members`).then((r) => r.json()).then((d) => {
+      setActive(d.active ?? []);
+      setPending(d.pending ?? []);
+      setCurrentUserRole(d.currentUserRole ?? null);
+    });
     fetch(`/api/spaces/${spaceId}/invite-code`).then((r) => (r.ok ? r.json() : null)).then((d) => d && setInviteCode(d.inviteCode));
   }, [spaceId]);
 
@@ -452,6 +458,21 @@ function MembersTab({ spaceId }: { spaceId: string }) {
   async function regenerateCode() {
     const res = await fetch(`/api/spaces/${spaceId}/invite-code`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     if (res.ok) load();
+  }
+
+  async function updateRole(membershipId: string, role: string) {
+    await fetch(`/api/spaces/${spaceId}/members/${membershipId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "SET_ROLE", role }),
+    });
+    load();
+  }
+
+  async function removeMember(membershipId: string) {
+    if (!confirm("Are you sure you want to remove this member?")) return;
+    await fetch(`/api/spaces/${spaceId}/members/${membershipId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "REMOVE" }),
+    });
+    load();
   }
 
   return (
@@ -485,9 +506,28 @@ function MembersTab({ spaceId }: { spaceId: string }) {
         <p className="text-sm font-medium mb-2">Members</p>
         <div className="space-y-2">
           {active.map((m) => (
-            <GlassCard key={m.id} className="flex items-center justify-between">
+            <GlassCard key={m.id} className="flex items-center justify-between overflow-visible">
               <p className="font-medium text-sm">{m.user.name}</p>
-              <Badge>{m.role.replace("_", " ").toLowerCase()}</Badge>
+              
+              <div className="flex items-center gap-3">
+                {currentUserRole === "OWNER" && m.role !== "OWNER" ? (
+                  <>
+                    <select
+                      value={m.role}
+                      onChange={(e) => updateRole(m.id, e.target.value)}
+                      className="focus-ring rounded-lg border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-2 py-1 text-sm font-medium"
+                    >
+                      <option value="VIEWER" className="dark:bg-neutral-900">Viewer</option>
+                      <option value="MEMBER" className="dark:bg-neutral-900">Member</option>
+                      <option value="TEAM_LEAD" className="dark:bg-neutral-900">Team Lead</option>
+                      <option value="CORE_ORGANIZER" className="dark:bg-neutral-900">Core Organizer</option>
+                    </select>
+                    <button onClick={() => removeMember(m.id)} className="text-xs text-acadly-coral hover:underline font-medium">Remove</button>
+                  </>
+                ) : (
+                  <Badge>{m.role.replace("_", " ").toLowerCase()}</Badge>
+                )}
+              </div>
             </GlassCard>
           ))}
         </div>

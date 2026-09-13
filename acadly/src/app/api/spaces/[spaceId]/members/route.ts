@@ -25,6 +25,6 @@ export async function GET(_req: Request, { params }: { params: { spaceId: string
       });
     }
 
-    return NextResponse.json({ active, pending });
+    return NextResponse.json({ active, pending, currentUserRole: membership.role });
   });
 }

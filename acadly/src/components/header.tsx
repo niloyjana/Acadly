@@ -66,28 +66,14 @@ export function Header() {
       Math.max(y, window.innerHeight - y)
     );
 
-    const transition = document.startViewTransition(() => {
+    document.documentElement.style.setProperty('--theme-x', `${x}px`);
+    document.documentElement.style.setProperty('--theme-y', `${y}px`);
+    document.documentElement.style.setProperty('--theme-r', `${endRadius}px`);
+
+    document.startViewTransition(() => {
       flushSync(() => {
         setTheme(newTheme);
       });
-    });
-
-    transition.ready.then(() => {
-      const clipPath = [
-        `circle(0px at ${x}px ${y}px)`,
-        `circle(${endRadius}px at ${x}px ${y}px)`,
-      ];
-
-      document.documentElement.animate(
-        {
-          clipPath: clipPath,
-        },
-        {
-          duration: 750,
-          easing: "cubic-bezier(0.64, 0, 0.15, 1)",
-          pseudoElement: "::view-transition-new(root)",
-        }
-      );
     });
   };
 
