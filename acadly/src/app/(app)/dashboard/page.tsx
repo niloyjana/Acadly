@@ -106,7 +106,7 @@ export default function DashboardPage() {
 
       </div>
 
-      {data && data.spaces.length === 0 && (
+      {data && data.spaces && data.spaces.length === 0 && (
         <GlassCard className="text-center py-10">
           <p className="font-medium mb-1">No spaces yet</p>
           <p className="text-sm text-ink/60 dark:text-white/60 mb-4">Join one with an invite code, or create your own committee.</p>

@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(arrayBuffer);
 
     const { error: uploadError } = await supabase.storage
-      .from("acadly-files")
+      .from("acadly-submissions")
       .upload(storageKey, buffer, {
         contentType: file.type,
       });

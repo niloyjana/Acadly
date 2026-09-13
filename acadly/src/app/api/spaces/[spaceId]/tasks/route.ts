@@ -7,7 +7,7 @@ import { requireMembership, can, ForbiddenError } from "@/lib/permissions";
 const CreateTaskSchema = z.object({
   title: z.string().min(2).max(120),
   description: z.string().max(1000).optional(),
-  assignedToId: z.string().optional(),
+  assigneeIds: z.array(z.string()).optional(),
   deadline: z.string().datetime(),
   points: z.number().int().min(0).max(100).default(10),
   latePoints: z.number().int().default(0),
@@ -24,10 +24,15 @@ export async function GET(req: Request, { params }: { params: { spaceId: string 
     const tasks = await prisma.task.findMany({
       where: {
         spaceId: params.spaceId,
-        ...(seeAll ? {} : { assignedToId: userId }),
+        ...(seeAll ? {} : {
+          OR: [
+            { assignees: { some: { id: userId } } },
+            { assignees: { none: {} } }
+          ]
+        }),
       },
       include: { 
-        assignedTo: { select: { id: true, name: true } }, 
+        assignees: { select: { id: true, name: true } }, 
         submissions: { orderBy: { submittedAt: "desc" }, take: 1, include: { file: true } } 
       },
       orderBy: { deadline: "asc" },
@@ -52,13 +57,13 @@ export async function POST(req: Request, { params }: { params: { spaceId: string
 
     const body = CreateTaskSchema.parse(await req.json());
 
-    if (body.assignedToId) {
-      const assigneeMembership = await prisma.spaceMember.findFirst({
-        where: { spaceId: params.spaceId, userId: body.assignedToId, status: "ACTIVE" },
+    if (body.assigneeIds && body.assigneeIds.length > 0) {
+      const assigneeMemberships = await prisma.spaceMember.findMany({
+        where: { spaceId: params.spaceId, userId: { in: body.assigneeIds }, status: "ACTIVE" },
       });
-      if (!assigneeMembership) {
+      if (assigneeMemberships.length !== body.assigneeIds.length) {
         return NextResponse.json(
-          { error: "You can only assign tasks to active members of this space." },
+          { error: "One or more assignees are not active members of this space." },
           { status: 422 }
         );
       }
@@ -69,25 +74,30 @@ export async function POST(req: Request, { params }: { params: { spaceId: string
         spaceId: params.spaceId,
         title: body.title,
         description: body.description,
-        assignedToId: body.assignedToId,
+        assignees: body.assigneeIds?.length ? {
+          connect: body.assigneeIds.map(id => ({ id }))
+        } : undefined,
         createdById: userId,
         deadline: new Date(body.deadline),
         points: body.points,
         latePoints: body.latePoints,
         missedPoints: body.missedPoints,
       },
+      include: {
+        assignees: true
+      }
     });
 
-    if (body.assignedToId) {
-      await prisma.notification.create({
-        data: {
-          userId: body.assignedToId,
+    if (body.assigneeIds && body.assigneeIds.length > 0) {
+      await prisma.notification.createMany({
+        data: body.assigneeIds.map((assigneeId) => ({
+          userId: assigneeId,
           type: "TASK_ASSIGNED",
           title: "New task assigned",
           message: `You were assigned "${task.title}", due ${task.deadline.toDateString()}.`,
           relatedSpaceId: params.spaceId,
           relatedId: task.id,
-        },
+        })),
       });
     }
 

@@ -13,12 +13,15 @@ const SubmitSchema = z.object({
 export async function POST(req: Request, { params }: { params: { taskId: string } }) {
   return withApiErrors(async () => {
     const userId = await requireUserId();
-    const task = await prisma.task.findUnique({ where: { id: params.taskId } });
+    const task = await prisma.task.findUnique({
+      where: { id: params.taskId },
+      include: { assignees: true },
+    });
     if (!task) throw new NotFoundError("Task not found.");
 
     await requireMembership(task.spaceId, userId);
-    if (task.assignedToId !== userId) {
-      throw new ForbiddenError("You can only submit work for tasks assigned to you.");
+    if (!task.assignees.some((a) => a.id === userId)) {
+      throw new ForbiddenError("You are not assigned to this task.");
     }
     if (task.status === "COMPLETED") {
       return NextResponse.json({ error: "This task has already been completed and approved." }, { status: 409 });

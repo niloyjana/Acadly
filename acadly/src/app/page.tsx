@@ -4,10 +4,35 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { signIn } from "next-auth/react";
 
 export default function LandingPage() {
   const [showLogin, setShowLogin] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [showPassword, setShowPassword] = useState(false);
+  
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async () => {
+    setLoading(true);
+    setError("");
+    const res = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+    if (res?.error) {
+      setError("Invalid credentials");
+      setLoading(false);
+    } else {
+      window.location.href = "/dashboard";
+    }
+  };
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-white dark:bg-neutral-950 flex flex-col items-center justify-center">
       {/* Grid background */}
@@ -246,13 +271,39 @@ export default function LandingPage() {
                     />
                   )}
                 </AnimatePresence>
-                <input placeholder="Email address" className="w-full px-5 py-4 rounded-xl border border-black/10 dark:border-white/10 bg-white/50 dark:bg-black/50 text-black dark:text-white outline-none focus:border-acadly-violet transition-colors" />
-                <input type="password" placeholder="Password" className="w-full px-5 py-4 rounded-xl border border-black/10 dark:border-white/10 bg-white/50 dark:bg-black/50 text-black dark:text-white outline-none focus:border-acadly-violet transition-colors" />
-                <Link href="/dashboard" className="w-full mt-2">
-                  <button className="w-full py-4 rounded-xl bg-acadly-violet text-white font-semibold shadow-md hover:bg-acadly-violet/90 transition-colors">
-                    {authMode === "login" ? "Log in" : "Create account"}
+                <input 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email address" 
+                  className="w-full px-5 py-4 rounded-xl border border-black/10 dark:border-white/10 bg-white/50 dark:bg-black/50 text-black dark:text-white outline-none focus:border-acadly-violet transition-colors" 
+                />
+                
+                <div className="relative w-full">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Password" 
+                    className="w-full px-5 py-4 pr-12 rounded-xl border border-black/10 dark:border-white/10 bg-white/50 dark:bg-black/50 text-black dark:text-white outline-none focus:border-acadly-violet transition-colors" 
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
-                </Link>
+                </div>
+
+                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+                <button 
+                  onClick={handleLogin}
+                  disabled={loading}
+                  className="w-full mt-2 py-4 rounded-xl bg-acadly-violet text-white font-semibold shadow-md hover:bg-acadly-violet/90 transition-colors"
+                >
+                  {loading ? "Logging in..." : authMode === "login" ? "Log in" : "Create account"}
+                </button>
                 <div className="mt-4 flex items-center justify-between text-sm text-black/50 dark:text-white/50">
                   <button onClick={() => { setShowLogin(false); setTimeout(() => setAuthMode("login"), 500); }} className="hover:text-black dark:hover:text-white transition-colors">← Back</button>
                   <button 

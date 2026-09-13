@@ -5,10 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutGrid, Users, PlusCircle, Menu, X } from "lucide-react";
+import { LayoutGrid, Users, PlusCircle, Calendar, Menu, X } from "lucide-react";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
+  { href: "/calendar", label: "My Calendar", icon: Calendar },
   { href: "/spaces", label: "My Spaces", icon: Users },
   { href: "/create-space", label: "New Space", icon: PlusCircle },
 ];

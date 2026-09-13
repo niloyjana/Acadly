@@ -57,7 +57,7 @@ async function main() {
     data: {
       spaceId: space.id,
       title: "Design Freshers Poster",
-      assignedToId: member.id,
+      assignees: { connect: { id: member.id } },
       createdById: owner.id,
       deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
       points: 10,

@@ -15,7 +15,7 @@ export async function GET() {
 
     const [myTasks, upcomingEvents] = await Promise.all([
       prisma.task.findMany({
-        where: { spaceId: { in: spaceIds }, assignedToId: userId },
+        where: { spaceId: { in: spaceIds }, assignees: { some: { id: userId } } },
         orderBy: { deadline: "asc" },
       }),
       prisma.event.findMany({

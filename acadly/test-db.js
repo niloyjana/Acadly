@@ -3,10 +3,16 @@ const prisma = new PrismaClient();
 
 async function main() {
   try {
-    const user = await prisma.user.findFirst();
-    console.log("DB connection successful!", user);
+    const user = await prisma.user.findUnique({
+      where: { email: "niloyjana2005@gmail.com" }
+    });
+    if (user) {
+      console.log("User found:", user.email);
+    } else {
+      console.log("User not found!");
+    }
   } catch (err) {
-    console.error("DB error:", err);
+    console.error("Error:", err);
   } finally {
     await prisma.$disconnect();
   }

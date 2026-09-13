@@ -23,7 +23,7 @@ export async function GET(req: Request, { params }: { params: { fileId: string }
 
     // Create a short-lived signed URL for downloading
     const { data, error } = await supabase.storage
-      .from("acadly-files")
+      .from("acadly-submissions")
       .createSignedUrl(fileAsset.storageKey, 60 * 5); // 5 minutes
 
     if (error || !data) {

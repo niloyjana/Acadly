@@ -11,6 +11,7 @@ export type EventType = {
   startTime: string;
   endTime: string;
   location: string;
+  space?: { name: string };
 };
 
 
@@ -113,9 +114,15 @@ interface InteractiveCalendarProps extends HTMLMotionProps<"div"> {
   onDelete?: () => void;
 }
 
-const InteractiveCalendar = React.forwardRef<HTMLDivElement, InteractiveCalendarProps>(({ events = [], spaceId, onDelete, className, ...props }, ref) => {
-  const [moreView, setMoreView] = useState(false);
+const InteractiveCalendar = React.forwardRef<HTMLDivElement, InteractiveCalendarProps>(({
+  events = [],
+  spaceId,
+  onDelete,
+  className,
+  ...props
+}, ref) => {
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
+  const [moreView, setMoreView] = useState(false);
   
   const currentDate = new Date();
   const monthStart = startOfMonth(currentDate);
@@ -133,14 +140,14 @@ const InteractiveCalendar = React.forwardRef<HTMLDivElement, InteractiveCalendar
         id: e.id,
         date: format(new Date(e.startTime), "EEE, d MMM"),
         time: `${format(new Date(e.startTime), "h:mm a")} - ${format(new Date(e.endTime), "h:mm a")}`,
-        title: e.title,
+        title: e.space ? `[${e.space.name}] ${e.title}` : e.title,
         participants: [], // Real data doesn't have participants yet
         location: e.location || "TBD",
       }));
 
-      let classNames = isCurrentMonth ? 'bg-black/5 dark:bg-white/5' : 'bg-black/5 dark:bg-white/5 opacity-50';
+      let classNames = isCurrentMonth ? 'bg-black/5 dark:bg-white/10 backdrop-blur-md' : 'bg-black/5 dark:bg-white/10 backdrop-blur-md opacity-40';
       if (meetingInfo.length > 0) {
-        classNames += ' cursor-pointer border border-acadly-violet/30';
+        classNames += ' cursor-pointer border border-acadly-violet/50 shadow-sm';
       }
 
       return {

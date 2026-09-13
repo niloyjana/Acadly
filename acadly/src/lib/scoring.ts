@@ -24,9 +24,8 @@ export async function applyApprovalPoints(params: {
   const { taskId, submissionId, exceptional } = params;
 
   return prisma.$transaction(async (tx) => {
-    const task = await tx.task.findUniqueOrThrow({ where: { id: taskId } });
+    const task = await tx.task.findUniqueOrThrow({ where: { id: taskId }, include: { assignees: true } });
     const submission = await tx.submission.findUniqueOrThrow({ where: { id: submissionId } });
-    if (!task.assignedToId) throw new Error("Task has no assignee to award points to.");
 
     let pointsAwarded: number;
     if (!submission.wasOnTime) {
@@ -42,7 +41,7 @@ export async function applyApprovalPoints(params: {
     });
 
     await tx.spaceMember.updateMany({
-      where: { spaceId: task.spaceId, userId: task.assignedToId },
+      where: { spaceId: task.spaceId, userId: submission.userId },
       data: {
         points: { increment: pointsAwarded },
         completedCount: { increment: 1 },
@@ -68,14 +67,15 @@ export async function sweepMissedTasks(gracePeriodHours = 0) {
       deadline: { lt: cutoff },
       status: { in: ["ASSIGNED", "IN_PROGRESS", "OVERDUE"] },
     },
+    include: { assignees: true }
   });
 
   for (const task of overdue) {
     await prisma.$transaction(async (tx) => {
       await tx.task.update({ where: { id: task.id }, data: { status: "MISSED" } });
-      if (task.assignedToId) {
+      if (task.assignees.length > 0) {
         await tx.spaceMember.updateMany({
-          where: { spaceId: task.spaceId, userId: task.assignedToId },
+          where: { spaceId: task.spaceId, userId: { in: task.assignees.map(a => a.id) } },
           data: { points: { increment: task.missedPoints }, missedCount: { increment: 1 } },
         });
       }

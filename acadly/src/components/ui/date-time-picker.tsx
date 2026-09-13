@@ -79,7 +79,7 @@ export function DateTimePicker({ value, onChange, placeholder }: DateTimePickerP
       </div>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 z-50 rounded-2xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-black/60 backdrop-blur-2xl p-4 shadow-2xl w-80">
+        <div className="absolute top-full mt-2 left-0 z-50 rounded-2xl border border-black/10 dark:border-white/10 bg-white/90 dark:bg-black/90 backdrop-blur-3xl p-4 shadow-2xl w-80">
           <DateWheelPicker
             value={parsedDate}
             onChange={handleDateChange}

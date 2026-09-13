@@ -6,8 +6,9 @@ import { GlassCard, Button, Badge } from "@/components/ui/glass-card";
 import { format } from "date-fns";
 import InteractiveCalendar from "@/components/ui/visualize-booking";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { Star } from "lucide-react";
 
-type Tab = "members" | "tasks" | "calendar";
+type Tab = "tasks" | "calendar" | "members" | "announcements";
 
 export default function SpaceDetailPage() {
   const { spaceId } = useParams<{ spaceId: string }>();
@@ -16,7 +17,7 @@ export default function SpaceDetailPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex gap-2">
-        {(["tasks", "calendar", "members"] as Tab[]).map((t) => (
+        {(["tasks", "calendar", "members", "announcements"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -32,6 +33,7 @@ export default function SpaceDetailPage() {
       {tab === "tasks" && <TasksTab spaceId={spaceId} />}
       {tab === "calendar" && <CalendarTab spaceId={spaceId} />}
       {tab === "members" && <MembersTab spaceId={spaceId} />}
+      {tab === "announcements" && <AnnouncementsTab spaceId={spaceId} />}
     </div>
   );
 }
@@ -41,7 +43,7 @@ export default function SpaceDetailPage() {
 function TasksTab({ spaceId }: { spaceId: string }) {
   const [tasks, setTasks] = useState<any[] | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: "", deadline: "", points: 10, assignedToId: "" });
+  const [form, setForm] = useState<{ title: string, deadline: string, points: number | string, assigneeIds: string[] }>({ title: "", deadline: "", points: "", assigneeIds: [] });
   const [members, setMembers] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,12 +83,12 @@ function TasksTab({ spaceId }: { spaceId: string }) {
     const res = await fetch(`/api/spaces/${spaceId}/tasks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, deadline: new Date(form.deadline).toISOString(), assignedToId: form.assignedToId || undefined }),
+      body: JSON.stringify({ ...form, points: Number(form.points) || 0, deadline: new Date(form.deadline).toISOString(), assigneeIds: form.assigneeIds.length ? form.assigneeIds : undefined }),
     });
     const data = await res.json();
     if (!res.ok) return setError(data.error);
     setShowForm(false);
-    setForm({ title: "", deadline: "", points: 10, assignedToId: "" });
+    setForm({ title: "", deadline: "", points: "", assigneeIds: [] });
     load();
   }
 
@@ -115,6 +117,17 @@ function TasksTab({ spaceId }: { spaceId: string }) {
       alert(err.message);
     } finally {
       setReviewLoading(false);
+    }
+  }
+
+  async function deleteTask(taskId: string) {
+    if (!confirm("Are you sure you want to delete this task?")) return;
+    try {
+      const res = await fetch(`/api/spaces/${spaceId}/tasks/${taskId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to delete task");
+      load();
+    } catch (err: any) {
+      alert(err.message);
     }
   }
 
@@ -164,18 +177,20 @@ function TasksTab({ spaceId }: { spaceId: string }) {
       </div>
 
       {showForm && (
-        <form onSubmit={createTask} className="glass p-5 space-y-3">
+        <form onSubmit={createTask} className="glass p-5 space-y-3 relative z-20">
           <input required placeholder="Task title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm" />
           <div className="grid grid-cols-2 gap-3">
             <DateTimePicker value={form.deadline} onChange={(val) => setForm({ ...form, deadline: val })} placeholder="Deadline" />
-            <input type="number" min={0} value={form.points} onChange={(e) => setForm({ ...form, points: Number(e.target.value) })}
-              className="focus-ring rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm" />
+            <input type="number" min={0} value={form.points} onChange={(e) => setForm({ ...form, points: e.target.value })} placeholder="Points"
+              className="focus-ring rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
           </div>
-          <select value={form.assignedToId} onChange={(e) => setForm({ ...form, assignedToId: e.target.value })}
-            className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm">
-            <option value="">Unassigned</option>
-            {members.map((m) => <option key={m.id} value={m.user.id}>{m.user.name}</option>)}
+          <select multiple value={form.assigneeIds} onChange={(e) => {
+            const options = Array.from(e.target.selectedOptions);
+            setForm({ ...form, assigneeIds: options.map(o => o.value) });
+          }}
+            className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm h-24">
+            {members.map((m) => <option key={m.id} value={m.user.id} className="bg-white text-black dark:bg-neutral-900 dark:text-white p-1">{m.user.name}</option>)}
           </select>
           {error && <p className="text-sm text-acadly-coral">{error}</p>}
           <Button type="submit">Create</Button>
@@ -221,20 +236,29 @@ function TasksTab({ spaceId }: { spaceId: string }) {
                         onChange={(e: any) => setReviewDecision(e.target.value)}
                         className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm"
                       >
-                        <option value="APPROVE">Approve</option>
-                        <option value="REVISION_REQUESTED">Request Revision</option>
-                        <option value="REJECT">Reject</option>
+                        <option value="APPROVE" className="bg-white text-black dark:bg-neutral-900 dark:text-white">Approve</option>
+                        <option value="REVISION_REQUESTED" className="bg-white text-black dark:bg-neutral-900 dark:text-white">Request Revision</option>
+                        <option value="REJECT" className="bg-white text-black dark:bg-neutral-900 dark:text-white">Reject</option>
                       </select>
                     </div>
 
-                    <div className="w-24">
-                      <label className="text-xs font-medium text-ink/60 dark:text-white/60 mb-1 block">Rating (1-5)</label>
-                      <input 
-                        type="number" min={1} max={5}
-                        value={reviewRating}
-                        onChange={(e) => setReviewRating(Number(e.target.value))}
-                        className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm"
-                      />
+                    <div>
+                      <label className="text-xs font-medium text-ink/60 dark:text-white/60 mb-1 block">Rating</label>
+                      <div className="flex gap-1 items-center h-[38px]">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewRating(star)}
+                            className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
+                          >
+                            <Star
+                              size={22}
+                              className={star <= reviewRating ? "fill-yellow-400 text-yellow-400" : "text-ink/20 dark:text-white/20"}
+                            />
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -265,14 +289,19 @@ function TasksTab({ spaceId }: { spaceId: string }) {
               <div>
                 <p className="font-medium">{t.title}</p>
                 <p className="text-xs text-ink/50 dark:text-white/50">
-                  {t.assignedTo?.name ?? "Unassigned"} · Due {format(new Date(t.deadline), "d MMM, h:mm a")} · {t.points} pts
+                  {t.assignees?.length > 0 ? t.assignees.map((a: any) => a.name).join(", ") : "Unassigned"} · Due {format(new Date(t.deadline), "d MMM, h:mm a")} · {t.points} pts
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                {(t.createdById === currentUser?.id || currentUser?.role === "OWNER" || currentUser?.role === "CORE_ORGANIZER") && (
+                  <button onClick={() => deleteTask(t.id)} className="text-acadly-coral/60 hover:text-acadly-coral text-xs font-medium mr-2 transition-colors">
+                    Delete
+                  </button>
+                )}
                 <Badge tone={t.status === "COMPLETED" ? "mint" : t.status === "MISSED" ? "coral" : "amber"}>
                   {t.status.replace("_", " ").toLowerCase()}
                 </Badge>
-                {["ASSIGNED", "IN_PROGRESS", "REVISION_REQUIRED"].includes(t.status) && submittingTaskId !== t.id && t.assignedTo?.id === currentUser?.id && (
+                {["ASSIGNED", "IN_PROGRESS", "REVISION_REQUIRED"].includes(t.status) && submittingTaskId !== t.id && t.assignees?.some((a: any) => a.id === currentUser?.id) && (
                   <Button variant="ghost" onClick={() => setSubmittingTaskId(t.id)}>Submit work</Button>
                 )}
               </div>
@@ -440,6 +469,89 @@ function MembersTab({ spaceId }: { spaceId: string }) {
             </GlassCard>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------- Announcements ----------------
+
+function AnnouncementsTab({ spaceId }: { spaceId: string }) {
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<{ id: string, role: string } | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/spaces/${spaceId}/announcements`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setAnnouncements(data);
+      });
+    fetch(`/api/spaces/${spaceId}/tasks`)
+      .then((res) => res.json())
+      .then((data) => setCurrentUser({ id: data.currentUserId, role: data.currentUserRole }));
+  }, [spaceId]);
+
+  const canPost = currentUser?.role === "OWNER" || currentUser?.role === "CORE_ORGANIZER";
+
+  const handlePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const res = await fetch(`/api/spaces/${spaceId}/announcements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, body }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setAnnouncements([{ ...data, author: { name: "You" } }, ...announcements]); // Optimistic
+      setShowForm(false);
+      setTitle("");
+      setBody("");
+    } else {
+      const err = await res.json();
+      setError(err.error || "Failed to post");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {canPost && (
+        <div className="flex justify-end">
+          <Button onClick={() => setShowForm(!showForm)}>{showForm ? "Cancel" : "New Announcement"}</Button>
+        </div>
+      )}
+
+      {showForm && (
+        <form onSubmit={handlePost} className="glass p-5 space-y-3 relative z-20">
+          <input required placeholder="Announcement Title" value={title} onChange={(e) => setTitle(e.target.value)}
+            className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm font-medium" />
+          <textarea required placeholder="Write your message..." value={body} onChange={(e) => setBody(e.target.value)}
+            className="focus-ring w-full rounded-xl border border-ink/10 dark:border-white/15 bg-white/70 dark:bg-white/5 px-3 py-2 text-sm min-h-[100px]" />
+          {error && <p className="text-sm text-acadly-coral">{error}</p>}
+          <Button type="submit">Post Announcement</Button>
+        </form>
+      )}
+
+      <div className="space-y-4">
+        {(!Array.isArray(announcements) || announcements.length === 0) && !showForm && (
+          <p className="text-center text-ink/50 dark:text-white/50 py-8">No announcements yet.</p>
+        )}
+        {Array.isArray(announcements) && announcements.map((a) => (
+          <GlassCard key={a.id} className="space-y-2">
+            <div className="flex justify-between items-start">
+              <h3 className="font-semibold text-lg">{a.title}</h3>
+              <span className="text-xs text-ink/50 dark:text-white/50">{format(new Date(a.createdAt), "MMM d, h:mm a")}</span>
+            </div>
+            <p className="text-sm text-ink/80 dark:text-white/80 whitespace-pre-wrap">{a.body}</p>
+            <div className="pt-2 flex items-center gap-2 text-xs text-ink/50 dark:text-white/50">
+              {a.author?.name && <span>Posted by {a.author.name}</span>}
+            </div>
+          </GlassCard>
+        ))}
       </div>
     </div>
   );

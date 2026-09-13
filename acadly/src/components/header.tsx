@@ -112,6 +112,30 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between gap-4 px-9 h-[80px] bg-transparent">
+      {/* Grid fade masks for light and dark modes */}
+      <div 
+        className="absolute inset-x-0 top-0 h-[100px] z-[-1] pointer-events-none dark:hidden" 
+        style={{
+          backgroundColor: '#F3F1FA',
+          backgroundImage: 'linear-gradient(to right, rgba(0,0,0,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.12) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+          backgroundAttachment: 'fixed',
+          maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)'
+        }} 
+      />
+      <div 
+        className="absolute inset-x-0 top-0 h-[100px] z-[-1] pointer-events-none hidden dark:block" 
+        style={{
+          backgroundColor: '#0E0B1A',
+          backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+          backgroundAttachment: 'fixed',
+          maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)'
+        }} 
+      />
+
       <motion.div
         initial={false}
         animate={{ x: isSidebarCollapsed ? 192 : 0 }}

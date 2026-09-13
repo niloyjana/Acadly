@@ -101,7 +101,7 @@ model User {
   ownedSpaces      Space[]        @relation("SpaceOwner")
   createdInvites   InviteCode[]
   createdEvents    Event[]        @relation("EventCreator")
-  tasksAssigned    Task[]         @relation("TaskAssignee")
+  tasksAssigned    Task[]         @relation("TaskAssignees")
   tasksCreated     Task[]         @relation("TaskCreator")
   submissions      Submission[]   @relation("SubmissionAuthor")
   reviewedSubs     Submission[]   @relation("SubmissionReviewer")
@@ -197,8 +197,7 @@ model Task {
   space       Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   title       String
   description String?
-  assignedToId String?
-  assignedTo  User?      @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  assignees   User[]     @relation("TaskAssignees")
   createdById String
   createdBy   User       @relation("TaskCreator", fields: [createdById], references: [id])
   deadline    DateTime
@@ -211,7 +210,6 @@ model Task {
   submissions Submission[]
 
   @@index([spaceId, status])
-  @@index([assignedToId])
 }
 
 model Submission {
