@@ -78,13 +78,13 @@ body {
 }
 
 @keyframes theme-expand {
-  from { clip-path: circle(0px at var(--theme-x, 50%) var(--theme-y, 50%)); }
-  to   { clip-path: circle(var(--theme-r, 100vw) at var(--theme-x, 50%) var(--theme-y, 50%)); }
+  from { clip-path: circle(var(--theme-r0, 20px) at var(--theme-x, 50%) var(--theme-y, 50%)); }
+  to   { clip-path: circle(var(--theme-r, 100vw)  at var(--theme-x, 50%) var(--theme-y, 50%)); }
 }
 
 @keyframes theme-shrink {
-  from { clip-path: circle(var(--theme-r, 100vw) at var(--theme-x, 50%) var(--theme-y, 50%)); }
-  to   { clip-path: circle(0px at var(--theme-x, 50%) var(--theme-y, 50%)); }
+  from { clip-path: circle(var(--theme-r, 100vw)  at var(--theme-x, 50%) var(--theme-y, 50%)); }
+  to   { clip-path: circle(var(--theme-r0, 20px) at var(--theme-x, 50%) var(--theme-y, 50%)); }
 }
 /* ---- Custom Scrollbars ---- */
 ::-webkit-scrollbar {

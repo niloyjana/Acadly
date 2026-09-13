@@ -59,8 +59,14 @@ export function Header() {
       return;
     }
 
-    const x = e.clientX;
-    const y = e.clientY;
+    // Use button center as the origin point
+    const btn = e.currentTarget as HTMLElement;
+    const rect = btn.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+
+    // Start circle from the button's own radius so it feels like it bursts outward
+    const startRadius = Math.hypot(rect.width, rect.height) / 2;
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y)
@@ -68,6 +74,7 @@ export function Header() {
 
     document.documentElement.style.setProperty('--theme-x', `${x}px`);
     document.documentElement.style.setProperty('--theme-y', `${y}px`);
+    document.documentElement.style.setProperty('--theme-r0', `${startRadius}px`);
     document.documentElement.style.setProperty('--theme-r', `${endRadius}px`);
 
     // Tag the direction so CSS can pick the right layer to animate
