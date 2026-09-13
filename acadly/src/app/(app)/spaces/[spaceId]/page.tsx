@@ -17,10 +17,6 @@ export default function SpaceDetailPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="glass rounded-xl2 px-2 pb-1 pt-1">
-        <SpaceTabNav active={tab} onChange={setTab} />
-      </div>
-
       {tab === "tasks" && <TasksTab spaceId={spaceId} />}
       {tab === "calendar" && <CalendarTab spaceId={spaceId} />}
       {tab === "members" && <MembersTab spaceId={spaceId} />}
