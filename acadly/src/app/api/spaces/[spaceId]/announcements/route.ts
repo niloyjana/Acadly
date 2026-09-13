@@ -40,7 +40,7 @@ export async function GET(req: Request, { params }: { params: { spaceId: string 
       where: { spaceId: params.spaceId },
       include: {
         author: {
-          select: { name: true, image: true },
+          select: { name: true, avatarUrl: true },
         },
       },
       orderBy: { createdAt: "desc" },
