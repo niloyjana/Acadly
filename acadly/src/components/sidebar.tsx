@@ -11,7 +11,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/calendar", label: "My Calendar", icon: Calendar },
   { href: "/spaces", label: "My Spaces", icon: Users },
-  { href: "/create-space", label: "New Space", icon: PlusCircle },
+  { href: "/create-space", label: "Create", icon: PlusCircle },
 ];
 
 export function Sidebar() {
