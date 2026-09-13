@@ -29,8 +29,8 @@ export function SpaceTabNav({
   pinged?: SpaceTab[];
 }) {
   return (
-    <NavigationMenu className="max-w-none justify-start">
-      <NavigationMenuList className="w-full justify-start gap-1 space-x-0 overflow-x-auto scrollbar-hide">
+    <NavigationMenu className="max-w-none justify-start bg-transparent shadow-none border-none">
+      <NavigationMenuList className="w-full justify-start gap-1 space-x-0 overflow-x-auto scrollbar-hide bg-transparent shadow-none">
         {TAB_ITEMS.map(({ id, label, icon: Icon }) => {
           const isActive = active === id;
           const isPinged = pinged.includes(id);
