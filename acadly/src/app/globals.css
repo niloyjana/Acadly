@@ -58,21 +58,33 @@ body {
   animation: none;
   mix-blend-mode: normal;
 }
-::view-transition-old(root) {
+
+/* Dark→Light: expand the new (light) layer over the dark background */
+.theme-to-light::view-transition-old(root) {
   z-index: 1;
 }
-::view-transition-new(root) {
+.theme-to-light::view-transition-new(root) {
   z-index: 2;
-  animation: theme-sweep 750ms cubic-bezier(0.64, 0, 0.15, 1) both;
+  animation: theme-expand 750ms cubic-bezier(0.64, 0, 0.15, 1) both;
 }
 
-@keyframes theme-sweep {
-  0% {
-    clip-path: circle(0px at var(--theme-x, 50%) var(--theme-y, 50%));
-  }
-  100% {
-    clip-path: circle(var(--theme-r, 100vw) at var(--theme-x, 50%) var(--theme-y, 50%));
-  }
+/* Light→Dark: shrink the old (light) layer away, revealing dark underneath */
+.theme-to-dark::view-transition-old(root) {
+  z-index: 2;
+  animation: theme-shrink 750ms cubic-bezier(0.64, 0, 0.15, 1) both;
+}
+.theme-to-dark::view-transition-new(root) {
+  z-index: 1;
+}
+
+@keyframes theme-expand {
+  from { clip-path: circle(0px at var(--theme-x, 50%) var(--theme-y, 50%)); }
+  to   { clip-path: circle(var(--theme-r, 100vw) at var(--theme-x, 50%) var(--theme-y, 50%)); }
+}
+
+@keyframes theme-shrink {
+  from { clip-path: circle(var(--theme-r, 100vw) at var(--theme-x, 50%) var(--theme-y, 50%)); }
+  to   { clip-path: circle(0px at var(--theme-x, 50%) var(--theme-y, 50%)); }
 }
 /* ---- Custom Scrollbars ---- */
 ::-webkit-scrollbar {

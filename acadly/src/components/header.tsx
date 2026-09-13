@@ -70,10 +70,18 @@ export function Header() {
     document.documentElement.style.setProperty('--theme-y', `${y}px`);
     document.documentElement.style.setProperty('--theme-r', `${endRadius}px`);
 
-    document.startViewTransition(() => {
+    // Tag the direction so CSS can pick the right layer to animate
+    const direction = newTheme === 'dark' ? 'theme-to-dark' : 'theme-to-light';
+    document.documentElement.classList.add(direction);
+
+    const transition = document.startViewTransition(() => {
       flushSync(() => {
         setTheme(newTheme);
       });
+    });
+
+    transition.finished.finally(() => {
+      document.documentElement.classList.remove(direction);
     });
   };
 
