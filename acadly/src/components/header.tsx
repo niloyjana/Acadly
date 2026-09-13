@@ -209,11 +209,11 @@ export function Header() {
       
       <div className="flex items-center h-full">
         {name && (
-          <div className="flex items-center gap-2 px-1 md:px-3 py-1.5 mr-1 md:mr-2 text-sm font-medium">
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 mr-2 text-sm font-medium">
              <span className="h-7 w-7 rounded-full bg-acadly-violet text-white text-xs flex items-center justify-center font-bold shadow-sm">
               {name[0]?.toUpperCase()}
             </span>
-            <span className="hidden md:inline">{name}</span>
+            <span>{name}</span>
           </div>
         )}
         
